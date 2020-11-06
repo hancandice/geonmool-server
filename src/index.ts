@@ -1,1 +1,20 @@
-console.log("hello there");
+import { MikroORM } from "@mikro-orm/core";
+import { __prod__ } from "./constants";
+import { Post } from "./entities/Post";
+import microConfig from "./mikro-orm.config";
+
+const main = async () => {
+  const orm = await MikroORM.init(microConfig); // connect to database
+  await orm.getMigrator().up(); // run migration
+  // run sql
+  //   const post = orm.em.create(Post, {
+  //     title: "My first post",
+  //   });
+  //   await orm.em.persistAndFlush(post);
+  //   const posts = await orm.em.find(Post, {});
+  //   console.log(posts);
+};
+
+main().catch((err) => {
+  console.error(err);
+});
