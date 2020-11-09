@@ -8,7 +8,7 @@ export default {
     path: path.join(__dirname, "./migrations"),
     pattern: /^[\w-]+\d+\.[tj]s$/,
   },
-  entities: [Post],
+  entities: [Post], // correspond to database table
   dbName: "lireddit",
   user: "postgres",
   password: "200819",
