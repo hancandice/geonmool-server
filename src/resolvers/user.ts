@@ -11,6 +11,8 @@ import {
   Resolver,
 } from "type-graphql";
 import argon2 from "argon2";
+import { EntityManager } from "@mikro-orm/postgresql";
+import { COOKIE_NAME } from "../constants";
 
 @InputType()
 class UsernamePasswordInput {
@@ -61,7 +63,7 @@ export class UserResolver {
         errors: [
           {
             field: "username",
-            message: "length must be greater than 2",
+            message: "username's length must be greater than 2",
           },
         ],
       };
@@ -72,23 +74,28 @@ export class UserResolver {
         errors: [
           {
             field: "password",
-            message: "length must be greater than 2",
+            message: "password's length must be greater than 2",
           },
         ],
       };
     }
 
     const hashedPassword = await argon2.hash(options.password);
-    const user = em.create(User, {
-      username: options.username,
-      password: hashedPassword,
-    });
+    let user;
     try {
-      await em.persistAndFlush(user);
+      const result = await (em as EntityManager)
+        .createQueryBuilder(User)
+        .getKnexQuery()
+        .insert({
+          username: options.username,
+          password: hashedPassword,
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+        .returning("*");
+      user = result[0];
     } catch (err) {
-      //|| err.detail.includes("already exists")) {
-      // duplicate username error
-      if (err.code === "23505") {
+      if (err.code === "23505" || err.detail.includes("already exists")) {
         return {
           errors: [
             {
@@ -143,5 +150,20 @@ export class UserResolver {
     return {
       user,
     };
+  }
+
+  @Mutation(() => Boolean)
+  logout(@Ctx() { req, res }: MyContext) {
+    return new Promise((resolve) =>
+      req.session.destroy((err) => {
+        if (err) {
+          console.log(err);
+          resolve(false);
+          return;
+        }
+        res.clearCookie(COOKIE_NAME);
+        resolve(true);
+      })
+    );
   }
 }
