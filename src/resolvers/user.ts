@@ -11,10 +11,11 @@ import {
 } from "type-graphql";
 import argon2 from "argon2";
 import { EntityManager } from "@mikro-orm/postgresql";
-import { COOKIE_NAME } from "../constants";
+import { COOKIE_NAME, FORGOT_PASSWORD_PREFIX } from "../constants";
 import { UsernamePasswordInput } from "./UsernamePasswordInput";
 import { validateRegister } from "../utils/validateRegister";
 import { sendEmail } from "../utils/sendEmail";
+import { v4 } from "uuid";
 
 @ObjectType()
 class FieldError {
@@ -35,14 +36,24 @@ class UserResponse {
 @Resolver()
 export class UserResolver {
   @Mutation(() => Boolean)
-  async forgotPassword(@Arg("email") email: string, @Ctx() { em }: MyContext) {
+  async forgotPassword(
+    @Arg("email") email: string,
+    @Ctx() { em, redis }: MyContext
+  ) {
     const user = await em.findOne(User, { email });
     if (!user) {
       // the email is not in the db
       return true;
     }
 
-    const token = "fklwjflief92193pr8fjdkfjfsjk";
+    const token = v4();
+
+    await redis.set(
+      FORGOT_PASSWORD_PREFIX + token,
+      user.id,
+      "ex",
+      1000 * 60 * 60 * 24 * 3
+    );
 
     await sendEmail(
       email,
@@ -89,12 +100,29 @@ export class UserResolver {
         .returning("*");
       user = result[0];
     } catch (err) {
-      if (err.code === "23505" || err.detail.includes("already exists")) {
+      console.log(err);
+      if (
+        err.detail.includes("username") &&
+        err.detail.includes("already exists")
+      ) {
         return {
           errors: [
             {
               field: "username",
               message: "username already taken",
+            },
+          ],
+        };
+      }
+      if (
+        err.detail.includes("email") &&
+        err.detail.includes("already exists")
+      ) {
+        return {
+          errors: [
+            {
+              field: "email",
+              message: "email already taken",
             },
           ],
         };
