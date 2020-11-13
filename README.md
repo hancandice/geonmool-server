@@ -1,4 +1,4 @@
-**Switched to TypeORM**
+**6:02:38 / Error handling on frontend**
 
 # geonmool-server
 
