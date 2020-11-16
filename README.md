@@ -1,4 +1,4 @@
-**6:02:38 / Error handling on frontend**
+**6:33:05 / Pagination**
 
 # geonmool-server
 
